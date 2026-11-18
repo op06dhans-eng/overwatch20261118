@@ -260,7 +260,7 @@ body.sample #pick, body.sample #scrJoin h2, body.sample #joinMsg, body.sample .b
   <section class="scr" id="scrJoin" hidden>
     <div class="card">
       <h1>戰果積分</h1>
-      <p>你是偵察無人機的操作員，從幾公里外用觀測鏡看著對方的直升機整補點和旁邊的小鎮。拖曳畫面找出目標，按住「照射」不放，攻擊無人機就會照著飛來命中。也可以呼叫砲兵或攻擊機，一次打一整片區域。</p><p>第一次爆炸之後對方會被驚動：裝甲車開走，直升機發動起飛。</p><p><b style="color:#ffd27a">打中目標就有積分，目標越重要分數越高。積分可以隨時在商店換更好的裝備。</b></p>
+      <p>你是偵察無人機的操作員，從幾公里外用觀測鏡看著對方的直升機整補點和旁邊的小鎮。拖曳畫面找出目標，按住「照射」不放，攻擊無人機就會照著飛來命中。也可以呼叫砲兵或攻擊機，一次打一整片區域。</p><p>第一次爆炸之後對方會被驚動：裝甲車開走，直升機發動起飛。</p><p><b style="color:#ffd27a">打中目標就有積分，目標越重要分數越高。</b></p>
 
       <h2>選一隊加入（每隊最多 15 人）</h2>
       <div class="pick" id="pick"></div>
@@ -2679,7 +2679,7 @@ const FIREBASE_CONFIG = {
   messagingSenderId: '528664638395',
   appId: '1:528664638395:web:e478a9b393bbfe4b85ca9e',
 };
-const VERSION = '1.5（擴建整補點、通往小鎮的道路與檢查哨）';
+const VERSION = '1.6（取消商店，三項裝備一開始就給）';
 // 直接在電腦上打開下載的檔案時（網址是 file://），旁邊沒有圖檔和音效資料夾，改從 GitHub 網站載入
 const ASSET = location.protocol === 'file:' ? 'https://op06dhans-eng.github.io/radar-defense/' : '';
 // 新版自動重新載入：Safari 會暫存舊網頁，拿 version.txt 比對，不同就換網址重新載入（每個分頁只試一次）
@@ -5354,15 +5354,16 @@ function autopilot() {
    觀測鏡照射（樣張 0.4）：偵察無人機懸停在遠處，透過黑白長鏡頭看整補點與旁邊的小鎮。
    移動鏡頭找目標；照射＝攻擊無人機（精準）、砲擊與空襲＝打一整片。
    ========================================================= */
-const UPG = {
-  stab: { name: '穩定雲台', cost: 10, info: '鏡頭飄移減半，追移動目標更容易。' },
-  zoom: { name: '高倍鏡頭', cost: 15, info: '再多一段放大（65 倍），看得更清楚。' },
-  fast: { name: '快速攻擊機', cost: 20, info: '抵達時間從 3 秒縮短到 2 秒。' },
-  heavy: { name: '重彈頭', cost: 20, info: '一次命中算兩次。' },
+const UPG = { /* 1.6 取消商店：這三項一開始就裝好，不必花積分買 */
+  stab: { name: '穩定雲台', info: '鏡頭飄移減半，追移動目標更容易。' },
+  zoom: { name: '高倍鏡頭', info: '最多可放大到 65 倍。' },
+  fast: { name: '快速攻擊機', info: '照射後 2 秒就抵達。' },
 };
+WAL.own = { stab: 1, zoom: 1, fast: 1 };
 function renderTy() {
-  const html = `<div class="shopHead"><b>軍備商店</b><span>你的積分　<u>${WAL.pts}</u></span></div><div class="shopGrid">` + Object.entries(UPG).map(([k, t]) => `<button data-up="${k}" class="${WAL.own[k] ? 'on' : ''}" ${WAL.own[k] || t.cost > WAL.pts ? 'disabled' : ''}><b>${t.name}</b><i>${WAL.own[k] ? '已裝備' : t.cost + ' 分'}</i><small>${t.info}</small></button>`).join('') + '</div>';
-  document.querySelectorAll('[data-shop]').forEach(el => { el.innerHTML = html; el.querySelectorAll('button').forEach(b => b.onclick = () => { const k = b.dataset.up, u = UPG[k]; if (WAL.own[k] || u.cost > WAL.pts) return; WAL.pts -= u.cost; WAL.spent += u.cost; WAL.own[k] = 1; renderTy(); if (LENS.on) lensMsg(`已裝備：${u.name}`, 2.5); }); });
+  WAL.own.stab = WAL.own.zoom = WAL.own.fast = 1;
+  const html = `<div class="shopHead"><b>標準配備</b><span>已全部裝好</span></div><div class="shopGrid">` + Object.entries(UPG).map(([k, t]) => `<button data-up="${k}" class="on" disabled><b>${t.name}</b><i>已裝備</i><small>${t.info}</small></button>`).join('') + '</div>';
+  document.querySelectorAll('[data-shop]').forEach(el => { el.innerHTML = html; });
   const p = $('lPts'); if (p) p.textContent = WAL.pts;
 }
 const L_ZOOM = [16, 8, 4, 2, 1.1], L_OP = new THREE.Vector3(40, 128, 400), L_C = new THREE.Vector3(55, 0, -120), L_R = Math.hypot(40 - 55, 400 + 120), L_PH0 = Math.atan2(40 - 55, 400 + 120), L_YAW0 = -0.02, L_PITCH0 = -0.235;
@@ -5629,8 +5630,8 @@ hudL.innerHTML = `<div id="lPan"></div><canvas id="lNoise" width="320" height="1
   <div class="lWp"><button id="lW1"><b>攻擊無人機</b><small id="lW1s">按住照射</small><i id="lW1b"></i></button><button id="lMsl"><b>飛彈</b><small id="lW4s">剩 10 發</small><i id="lW4b"></i></button><button id="lArty"><b>砲擊</b><small id="lW2s">6 發</small><i id="lW2b"></i></button><button id="lRkt"><b>火箭砲</b><small id="lW6s">剩 3 次</small><i id="lW6b"></i></button><button id="lAir"><b>空襲</b><small id="lW3s">剩 4 次</small><i id="lW3b"></i></button><button id="lGun"><b>砲艇機</b><small id="lW5s">剩 2 次</small><i id="lW5b"></i></button></div>
   <button class="lBtn" id="lLase" style="right:max(18px, env(safe-area-inset-right));bottom:74px;width:92px;height:92px;border-color:#ffd27a;color:#ffd27a;font-size:1.25em">照射</button>
   <button class="lBtn" id="lZoom" style="left:max(18px, env(safe-area-inset-left));bottom:74px;width:64px;height:64px">放大</button>
-  <button class="lBtn" id="lTh" style="left:calc(max(18px, env(safe-area-inset-left)) + 152px);bottom:74px;width:64px;height:64px;font-size:.82em">熱影像</button>
-  <button class="lBtn" id="lShopB" style="left:calc(max(18px, env(safe-area-inset-left)) + 76px);bottom:74px;width:64px;height:64px;border-color:#ffd27a;color:#ffd27a">商店</button>
+  <button class="lBtn" id="lTh" style="left:calc(max(18px, env(safe-area-inset-left)) + 76px);bottom:74px;width:64px;height:64px;font-size:.82em">熱影像</button>
+  <button class="lBtn" id="lShopB" hidden style="display:none">商店</button>
   <div id="lShopP" hidden><div class="card" style="width:min(560px,94vw)"><div class="shop" data-shop></div><button class="btn" id="lShopX">關閉（遊戲沒有暫停）</button></div></div>`; }
 document.body.appendChild(hudL);
 { const st = document.createElement('style'); st.textContent = `#hudL { position: fixed; inset: 0; z-index: 12; font-family: var(--sans, 'Noto Sans TC', sans-serif); font-weight: 700; color: #f2f4f1; font-size: clamp(12px, 2vmax, 19px); user-select: none; -webkit-user-select: none; touch-action: none; }
@@ -5778,7 +5779,7 @@ function lensFrame(dt, time) {
   { const ls = $('lLas'); const t = s && !s.fail ? '雷射 照射中' : lasing ? '雷射 搜尋' : '雷射 待命'; if (ls.textContent !== t) ls.textContent = t; }
   const bar = $('lBar'); if (s && !s.fail) { bar.hidden = false; $('lBarI').style.width = `${Math.min(100, s.t / s.eta * 100)}%`; $('lBarT').textContent = s.lost > 0 ? `照射中斷！${Math.max(0, 1.5 - s.lost).toFixed(1)} 秒內照回目標` : `攻擊無人機 ${Math.max(0, s.eta - s.t).toFixed(1)} 秒後抵達　準星不要離開目標`; } else bar.hidden = true;
   const msg = $('lMsg'); const txt = L.msgT > 0 ? L.msg : ''; msg.hidden = !txt; if (txt && msg.textContent !== txt) msg.textContent = txt;
-  const hint = $('lHint'); const locked = document.pointerLockElement === $('lPan'); const KEYS = 'V 飛彈　X 砲擊　R 火箭砲<br>C 空襲　G 砲艇機　B 商店<br>T 熱影像　Z 放大'; const ht = MOBILE ? '' : !locked ? (L.noLock ? '按住滑鼠左鍵拖曳＝轉動鏡頭<br>空白鍵＝照射　滾輪＝放大<br>' + KEYS : '點一下畫面，滑鼠就變成鏡頭<br>' + KEYS) : '移動滑鼠＝轉動鏡頭<br>按住左鍵＝照射　滾輪或右鍵＝放大<br>' + KEYS + '<br>Esc 放開滑鼠'; hint.hidden = !ht; if (ht && hint.innerHTML !== ht) hint.innerHTML = ht;
+  const hint = $('lHint'); const locked = document.pointerLockElement === $('lPan'); const KEYS = 'V 飛彈　X 砲擊　R 火箭砲<br>C 空襲　G 砲艇機<br>T 熱影像　Z 放大'; const ht = MOBILE ? '' : !locked ? (L.noLock ? '按住滑鼠左鍵拖曳＝轉動鏡頭<br>空白鍵＝照射　滾輪＝放大<br>' + KEYS : '點一下畫面，滑鼠就變成鏡頭<br>' + KEYS) : '移動滑鼠＝轉動鏡頭<br>按住左鍵＝照射　滾輪或右鍵＝放大<br>' + KEYS + '<br>Esc 放開滑鼠'; hint.hidden = !ht; if (ht && hint.innerHTML !== ht) hint.innerHTML = ht;
   if (left <= 0 && !s && !L.arty && !L.air && !L.msl && !L.rkt && !L.gun) stopLens();
 }
 // 操作。滑鼠：點一下畫面鎖定滑鼠，移動＝轉鏡頭、按住左鍵＝照射、滾輪或右鍵＝放大；鎖不住時改成按住左鍵拖曳。觸控：手指往哪滑，鏡頭就往哪轉（跟滑鼠同方向，0.5.2 起）。
@@ -5801,7 +5802,7 @@ function lensFrame(dt, time) {
   tap('lZoom', () => lensZoom(0)); tap('lTh', () => thermNext());
   const shop = (on) => { if (on) { try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {} renderTy(); } $('lShopP').hidden = !on; };
   tap('lShopB', () => shop(true)); $('lShopX').addEventListener('click', () => shop(false));
-  addEventListener('keydown', (e) => { if (!LENS.on) return; LENS.keys[e.code] = true; if (e.code === 'KeyZ') lensZoom(0); if (e.code === 'KeyT') thermNext(); if (e.code === 'KeyX') LENS.callArty = true; if (e.code === 'KeyC') LENS.callAir = true; if (e.code === 'KeyV') LENS.callMsl = true; if (e.code === 'KeyR') LENS.callRkt = true; if (e.code === 'KeyG') LENS.callGun = true; if (e.code === 'Digit1') LENS.callMsl = true; if (e.code === 'Digit2') LENS.callArty = true; if (e.code === 'Digit3') LENS.callRkt = true; if (e.code === 'Digit4') LENS.callAir = true; if (e.code === 'Digit5') LENS.callGun = true; if (e.code === 'KeyB') shop($('lShopP').hidden); if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault(); });
+  addEventListener('keydown', (e) => { if (!LENS.on) return; LENS.keys[e.code] = true; if (e.code === 'KeyZ') lensZoom(0); if (e.code === 'KeyT') thermNext(); if (e.code === 'KeyX') LENS.callArty = true; if (e.code === 'KeyC') LENS.callAir = true; if (e.code === 'KeyV') LENS.callMsl = true; if (e.code === 'KeyR') LENS.callRkt = true; if (e.code === 'KeyG') LENS.callGun = true; if (e.code === 'Digit1') LENS.callMsl = true; if (e.code === 'Digit2') LENS.callArty = true; if (e.code === 'Digit3') LENS.callRkt = true; if (e.code === 'Digit4') LENS.callAir = true; if (e.code === 'Digit5') LENS.callGun = true;  if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault(); });
   addEventListener('keyup', (e) => { LENS.keys[e.code] = false; }); addEventListener('blur', () => { LENS.keys = {}; LENS.lase = false; LENS.md = false; });
   hudL.addEventListener('contextmenu', (e) => e.preventDefault());
 }
@@ -5835,7 +5836,7 @@ function tutTick(dt) {
   if (TUT.step === 1) { $('lTutT').innerHTML = `<b>1／3</b>　${MOBILE ? '用手指滑動' : '移動滑鼠'}，把準星移到<b>發亮的圓圈</b>上（一輛裝甲車）`; if (tk === TUT.key || st.dead) { TUT.step = 2; } }
   else if (TUT.step === 2) { $('lTutT').innerHTML = `<b>2／3</b>　${MOBILE ? '按住右下的<b>「照射」</b>' : '<b>按住滑鼠左鍵</b>（或空白鍵）'}不放，準星跟著目標，直到攻擊無人機命中`; for (const id of ['lLase', 'lW1']) $(id).classList.add('lPulse'); if (G.results.length > TUT.n0 || st.dead) { TUT.step = 3; for (const id of ['lLase', 'lW1']) $(id).classList.remove('lPulse'); } }
   else if (TUT.step === 3) { $('lTutT').innerHTML = `<b>3／3</b>　還可以一次打一整片：按下面的<b>「砲擊」</b>${MOBILE ? '' : '（或 X 鍵）'}試試看`; $('lArty').classList.add('lPulse'); if (LENS.arty) { TUT.step = 4; TUT.t = 0; $('lArty').classList.remove('lPulse'); } }
-  else if (TUT.step === 4) { $('lTutT').innerHTML = '準備好了！分數越高越好，<b>空襲</b>每輪可以叫四次。商店可以用積分換裝備。'; if (TUT.t > 3.5) tutEnd(); }
+  else if (TUT.step === 4) { $('lTutT').innerHTML = '準備好了！分數越高越好，<b>空襲</b>每輪可以叫四次。'; if (TUT.t > 3.5) tutEnd(); }
 }
 
 /* ---------- 鎮上的人：走動、被驚動後加快、被打中倒下 ---------- */
@@ -5967,7 +5968,7 @@ function stuScreen() {
   }
   const t = TEAMS[CL.team];
   const txt = ph === 'count' ? '馬上開始！' : ph === 'play' ? '這一輪已經開始了，馬上加入' : ph === 'end' || ph === 'rev' ? '這一輪結束了。看大螢幕，等老師開始下一輪。' : '等老師開始。可以先練習一下。';
-  ptUI.innerHTML = `<div class="pc"><div class="card2"><h1 style="color:${t.c}">${tName(CL.team, CL.no)}</h1><p>${txt}</p><p class="mut">你的積分 ${WAL.pts}　（商店買的裝備會一直保留）</p>${ph === 'play' || ph === 'count' ? '' : '<button class="b2 go" id="ptPrac">先練習一下（不計分）</button>'}<button class="b2" id="ptChg">換隊</button><p class="mut">手機請橫放，聲音打開比較有臨場感。</p></div></div>`;
+  ptUI.innerHTML = `<div class="pc"><div class="card2"><h1 style="color:${t.c}">${tName(CL.team, CL.no)}</h1><p>${txt}</p><p class="mut">你的積分 ${WAL.pts}</p>${ph === 'play' || ph === 'count' ? '' : '<button class="b2 go" id="ptPrac">先練習一下（不計分）</button>'}<button class="b2" id="ptChg">換隊</button><p class="mut">手機請橫放，聲音打開比較有臨場感。</p></div></div>`;
   if ($('ptPrac')) $('ptPrac').onclick = () => { try { SFX.init(); } catch (_) {} ptUI.hidden = true; CL.prac = true; CL.showRes = false; PTIME = 60; startLens(); };
   $('ptChg').onclick = () => { NET.remove(P('players/' + CL.pid)); CL.team = -1; stuScreen(); };
   if (ph === 'play' && CL.meta.round !== CL.round) stuStart();
@@ -6174,7 +6175,7 @@ ${sym(W * 0.41, 690, P, false)}<text x="${W * 0.41 - 6}" y="742" font-family="No
   if (cd) {
     const h1 = cd.querySelector('h1'), go = $('practice1'), pr = cd.querySelector('.ptRow'), shop = cd.querySelector('.shop');
     const ps = [...cd.querySelectorAll(':scope > p')].filter(p => !p.classList.contains('muted'));
-    if (ps.length >= 3) { ps[0].textContent = '你是偵察無人機的操作員，在幾公里外用觀測鏡盯著沙爾鎮與直升機整補點。按住「照射」，攻擊無人機就會照著飛來；也可以呼叫砲兵或攻擊機打一整片區域。'; ps[1].textContent = '第一次爆炸之後對方會被驚動：裝甲車開走，直升機發動起飛。'; ps[2].innerHTML = '<b>命中即計分，目標越重要分數越高。積分可以隨時換裝備。</b>'; }
+    if (ps.length >= 3) { ps[0].textContent = '你是偵察無人機的操作員，在幾公里外用觀測鏡盯著沙爾鎮與直升機整補點。按住「照射」，攻擊無人機就會照著飛來；也可以呼叫砲兵或攻擊機打一整片區域。'; ps[1].textContent = '第一次爆炸之後對方會被驚動：裝甲車開走，直升機發動起飛。'; ps[2].innerHTML = '<b>命中即計分，目標越重要分數越高。穩定雲台、高倍鏡頭、快速攻擊機都已經裝好。</b>'; }
     const tab = document.createElement('div'); tab.className = 'mpTab'; tab.innerHTML = '<span data-p="0">任務</span><span data-p="1">情報</span><span data-p="2">通信</span>';
     const pg = [0, 1, 2].map(i => { const d = document.createElement('div'); d.className = 'mpPg'; d.hidden = i > 0; return d; });
     pg[0].append(h1); pg[0].insertAdjacentHTML('beforeend', '<div class="mpCo">方格 37-38　／　距目標 4.2 公里</div>'); for (const p of ps) pg[0].append(p);
