@@ -2679,7 +2679,7 @@ const FIREBASE_CONFIG = {
   messagingSenderId: '528664638395',
   appId: '1:528664638395:web:e478a9b393bbfe4b85ca9e',
 };
-const VERSION = '1.4（人形改為一般衣著的人、直升機命中提示）';
+const VERSION = '1.5（擴建整補點、通往小鎮的道路與檢查哨）';
 // 直接在電腦上打開下載的檔案時（網址是 file://），旁邊沒有圖檔和音效資料夾，改從 GitHub 網站載入
 const ASSET = location.protocol === 'file:' ? 'https://op06dhans-eng.github.io/radar-defense/' : '';
 // 新版自動重新載入：Safari 會暫存舊網頁，拿 version.txt 比對，不同就換網址重新載入（每個分頁只試一次）
@@ -3010,7 +3010,7 @@ function modelStation(key, name, file, x, z, ry, len, cy, after) {
   const st = STATIONS[key] = { name, group: g, center: new THREE.Vector3(x, cy, z), hp: 1 };
   // 模型存成文字檔（base64）：放樣張的頁面不接受 .glb 檔
   (GLC[file] || (GLC[file] = (EMB['models/' + file.replace('.glb', '.txt')] !== undefined ? Promise.resolve(EMB['models/' + file.replace('.glb', '.txt')]) : fetch(ASSET + 'models/' + file.replace('.glb', '.txt')).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })).then(b64 => new Promise((ok, no) => { const bin = atob(b64.trim()); const u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); GL.parse(u8.buffer, '', ok, no); })))).then((gl0) => {
-    const gl = { scene: gl0.scene.clone(true), animations: gl0.animations }; const m = gl.scene; fitModel(m, len); g.add(m);
+    const gl = gl0.used ? { scene: gl0.scene.clone(true), animations: gl0.animations } : gl0; gl0.used = true; /* 第一次用原本的模型（直升機有動畫，複製會出錯），之後才複製 */ const m = gl.scene; fitModel(m, len); g.add(m);
     m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; o.userData.m0 = o.material; if (st.meshes) st.meshes.push(o); if (st.dead) o.material = charMat; } });
     if (after) after(gl, m, st);
   }).catch((e) => { console.warn('模型載入失敗', file, e); diag('模型載入失敗 ' + file + ' ' + (e && e.message || '')); });
@@ -5367,7 +5367,7 @@ function renderTy() {
 }
 const L_ZOOM = [16, 8, 4, 2, 1.1], L_OP = new THREE.Vector3(40, 128, 400), L_C = new THREE.Vector3(55, 0, -120), L_R = Math.hypot(40 - 55, 400 + 120), L_PH0 = Math.atan2(40 - 55, 400 + 120), L_YAW0 = -0.02, L_PITCH0 = -0.235;
 const LENS = { on: false, yaw: L_YAW0, pitch: L_PITCH0, aim: new THREE.Vector3(), rng: 400, zi: 1, lase: false, strike: null, cd: 0, t: 0, len: 120, alarm: -1, heli: 0, msg: '', msgT: 0, keys: {}, dx: 0, dy: 0, mx: 0, my: 0, n: 0, arty: null, artyCd: 0, air: null, airLeft: 2 };
-const L_MOVE = { btr0: { h: 0.9, v: 7, turn: 0.05 }, btr1: { h: -2.4, v: 6.5, turn: -0.06 }, btr2: { h: 3.3, v: 7.5, turn: 0.045 } };
+const BASE_LOOP = {}; const L_MOVE = { btr0: { h: 0.9, v: 7, turn: 0.05 }, btr1: { h: -2.4, v: 6.5, turn: -0.06 }, btr2: { h: 3.3, v: 7.5, turn: 0.045 } };
 
 /* ---------- 小鎮：街道分成一格一格的街區，房子一棟挨一棟。鎮上有駐軍（屋頂迫砲、機砲、卡車、檢查哨、彈藥堆、裝甲車、指揮車），畫面上沒有任何居民 ---------- */
 const lightBar = new THREE.MeshStandardMaterial({ color: '#d8d6cf', roughness: 0.8 });
@@ -5493,6 +5493,75 @@ const TOWN = { x: 70, z: -262, th: 0.12, houses: [], mil: [], fires: [], pop: 0,
   for (const k of T.mil) { if (!/^(tbt|trk|chk|amm|tcp)/.test(k) || R() < 0.15) continue; const st = STATIONS[k]; const [u, v] = T.toL(st.gx, st.gz); const a = R() * 6.283; addGroup(u + Math.cos(a) * 5, v + Math.sin(a) * 4, rn(2, 5)); }
   for (const k of T.mil) { if (!/^mor/.test(k) || R() < 0.6) continue; const h = T.houses.find(hh => hh.st === k); if (h) addGroup(h.u + (R() - 0.5) * 2, h.v + (R() < 0.5 ? 1 : -1) * (h.d / 2 + 1.4), rn(2, 4)); }
   { const [bu, bv] = blk(4, 3); for (let k = 0; k < 5; k++) addGroup(bu - 8 + R() * 16, bv - 6 + R() * 12, rn(4, 8)); }
+  /* ----- 直升機整補點擴建（1.5）：約 200×150 公尺的駐地，土石防爆牆圍起來，北門有檢查哨，一條路通往小鎮（路上也有檢查哨）。
+     裡面分區：車輛停放場（裝甲車、卡車、油罐車）、營帳區、貨櫃區、油料庫、彈藥掩體、發電機、通訊天線、迫砲陣地、防空砲、四角瞭望塔。全部都能打 ----- */
+  {
+    Object.assign(PT, { bbtr: [8, 20], btk: [6, 10], ftk: [8, 16], fuel: [6, 14], abk: [10, 20], tnt: [5, 8], cont: [3, 5], gen: [6, 10], ant: [8, 14], wtw: [6, 10], bmor: [10, 10], baag: [12, 12], gate: [6, 8], rchk: [6, 8] });
+    Object.assign(PT_NAME, { bbtr: '停放的裝甲車', btk: '軍用卡車', ftk: '油罐車', fuel: '油料囊', abk: '彈藥掩體', tnt: '營帳', cont: '貨櫃', gen: '發電機', ant: '通訊天線', wtw: '瞭望塔', bmor: '迫砲陣地', baag: '防空砲', gate: '營區大門檢查哨', rchk: '道路檢查哨' });
+    const regB = (key, name, g, r, top, cy, hp = 1) => { ST_INFO[key] = { name, hp, r, top }; const st = STATIONS[key] || (STATIONS[key] = { name, group: g, center: new THREE.Vector3(g.position.x, g.position.y + cy, g.position.z) }); Object.assign(st, { hp, key, max: hp, dead: false, meshes: [], gx: g.position.x, gz: g.position.z, gy: g.position.y, rot0: g.rotation.clone() }); g.traverse(o => { if (o.isMesh) { o.userData.m0 = o.material; st.meshes.push(o); } }); ST_KEYS.push(key); return st; };
+    const gw = (x, z, ry = 0) => { const g = new THREE.Group(); g.position.set(x, height(x, z), z); g.rotation.y = ry; scene.add(g); return g; };
+    const X0 = -100, X1 = 100, Z0 = -80, Z1 = 72; const gateN = [12, 30], gateS = [-9, 9], gateE = [-8, 8];
+    const ppl = (x, z, n) => { const [u, v] = T.toL(x, z); const gr = addGroup(u, v, n); gr.fixed = true; };
+    // 地面：整片碎石地（貼著地形）、內圈環道
+    { const W = X1 - X0 + 6, D = Z1 - Z0 + 6, g = new THREE.PlaneGeometry(W, D, 40, 30); g.rotateX(-Math.PI / 2); const P = g.attributes.position; for (let i = 0; i < P.count; i++) { const x = P.getX(i) + (X0 + X1) / 2, z = P.getZ(i) + (Z0 + Z1) / 2; P.setXYZ(i, x, height(x, z) + 0.05, z); } g.computeVertexNormals();
+      const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: '#6c6253', roughness: 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 })); m.receiveShadow = true; scene.add(m); }
+    const strip = (pts, wd, col, lift = 0.12) => { const P = [], I = []; let k = 0; for (let s = 0; s < pts.length - 1; s++) { const [x0, z0] = pts[s], [x1, z1] = pts[s + 1], L = Math.hypot(x1 - x0, z1 - z0), N = Math.max(1, Math.ceil(L / 6)), nx = -(z1 - z0) / L, nz = (x1 - x0) / L; for (let i = 0; i <= N; i++) { if (s && !i) continue; const t = i / N, x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t; for (const sd of [-1, 1]) { const px = x + nx * wd / 2 * sd, pz = z + nz * wd / 2 * sd; P.push(px, height(px, pz) + lift, pz); } if (k) { const a = (k - 1) * 2; I.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); } k++; } }
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setIndex(I); g.computeVertexNormals(); const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: col, roughness: 1, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3, side: THREE.DoubleSide })); m.receiveShadow = true; scene.add(m); };
+    strip([[-40, -52], [40, -52], [40, 47], [-40, 47], [-40, -52]], 6, '#4f463b');
+    // 通往小鎮的路（北門 → 道路檢查哨 → 小鎮南邊的街口），另有往南、往東的路
+    const [ex, ez] = T.toW(PP.STU[3], T.hv + 14); const RD = [[21, -46], [21, -84], [24, -110], [31, -126], [38, -146], [ex, ez]];
+    strip(RD, 7, '#4f463b', 0.16); strip([[0, 75], [4, 140], [14, 230], [30, 330]], 6, '#74665a', 0.16); strip([[100, 0], [150, -6], [230, 6], [320, -14]], 6, '#74665a', 0.16);
+    // 防爆牆（土石籃，合併成一個網格）
+    { const parts = []; const seg = (x0, z0, x1, z1, gap) => { const L = Math.hypot(x1 - x0, z1 - z0), n = Math.round(L / 2.2); for (let i = 0; i <= n; i++) { const t = i / n, x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t; if (gap && ((z0 === z1 && x > gap[0] && x < gap[1]) || (x0 === x1 && z > gap[0] && z < gap[1]))) continue; for (let k = 0; k < (i % 7 === 3 ? 1 : 2); k++) { const g = new THREE.BoxGeometry(2.15, 1.9, 2.15); g.rotateY((R() - 0.5) * 0.08); g.translate(x, height(x, z) + 0.95 + k * 1.9, z); parts.push(g.toNonIndexed()); } } };
+      seg(X0, Z0, X1, Z0, gateN); seg(X0, Z1, X1, Z1, gateS); seg(X1, Z0, X1, Z1, gateE); seg(X0, Z0, X0, Z1);
+      for (const p of parts) for (const k of Object.keys(p.attributes)) if (!['position', 'normal', 'uv'].includes(k)) p.deleteAttribute(k);
+      const m = new THREE.Mesh(mergeGeometries(parts), MAT.sand); m.castShadow = true; m.receiveShadow = true; scene.add(m); }
+    // 四角瞭望塔
+    [[X0 + 3, Z0 + 3], [X1 - 3, Z0 + 3], [X0 + 3, Z1 - 3], [X1 - 3, Z1 - 3]].forEach(([x, z], i) => { const g = gw(x, z, R() * 6); for (const [a, b] of [[-1.3, -1.3], [1.3, -1.3], [-1.3, 1.3], [1.3, 1.3]]) M(new THREE.BoxGeometry(0.25, 7, 0.25), MAT.dark, a, 3.5, b, g); M(new THREE.BoxGeometry(3.4, 0.25, 3.4), MAT.dark, 0, 7, 0, g); for (const [a, b, w, d] of [[0, -1.6, 3.4, 0.2], [0, 1.6, 3.4, 0.2], [-1.6, 0, 0.2, 3.4], [1.6, 0, 0.2, 3.4]]) M(new THREE.BoxGeometry(w, 1.1, d), MAT.bag, a, 7.6, b, g); M(new THREE.BoxGeometry(3.8, 0.15, 3.8), MAT.camo, 0, 9.3, 0, g); for (const [a, b] of [[-1.6, -1.6], [1.6, 1.6]]) M(new THREE.BoxGeometry(0.12, 1.6, 0.12), MAT.dark, a, 8.5, b, g); bake(g); regB('wtw' + i, '瞭望塔', g, 3.4, 10, 7); });
+    // 北門與道路上的檢查哨：崗亭、橫桿、沙包、水泥路障
+    const checkpoint = (key, name, x, z, ry) => { const g = gw(x, z, ry); M(new THREE.BoxGeometry(2.2, 2.6, 2.2), MAT.camo, -5.2, 1.3, 0, g); M(new THREE.BoxGeometry(2.6, 0.15, 2.6), MAT.dark, -5.2, 2.7, 0, g); M(new THREE.BoxGeometry(0.4, 1.2, 0.4), MAT.dark, -3.6, 0.6, 0, g); M(new THREE.BoxGeometry(7.2, 0.14, 0.14), lightBar, 0, 1.1, 0, g);
+      for (const [a, b, w, d] of [[5.2, -1.5, 0.6, 3.2], [-5.2, 2.6, 3.2, 0.6], [4.4, 2.8, 2.4, 0.6]]) M(new THREE.BoxGeometry(w, 1.1, d), MAT.bag, a, 0.55, b, g); bake(g); regB(key, name, g, 4.6, 2.8, 1.2);
+      for (const [a, b] of [[-2.5, -9], [2.5, -15], [-2.5, 9], [2.5, 15]]) { const j = new THREE.Group(); const c = Math.cos(ry), s = Math.sin(ry); const px = x + a * c + b * s, pz = z - a * s + b * c; j.position.set(px, height(px, pz), pz); j.rotation.y = ry; M(new THREE.BoxGeometry(3.6, 1.0, 0.6), MAT.concrete, 0, 0.5, 0, j); scene.add(j); } };
+    checkpoint('gate', '營區大門檢查哨', 21, -86, 0); checkpoint('rchk0', '道路檢查哨', 29, -122, -0.35); { const [cx, cz] = [ex + (31 - ex) * 0.35, ez + (-126 - ez) * 0.35]; checkpoint('rchk1', '道路檢查哨', cx, cz, -0.2); }
+    ppl(15, -90, 3); ppl(25, -118, 4); ppl(34, -126, 3);
+    // 車輛
+    const truck = (g, kind) => { M(new THREE.BoxGeometry(6.2, 0.45, 2.3), MAT.dark, 0, 1.0, 0, g); M(new THREE.BoxGeometry(1.9, 1.8, 2.2), MAT.camo, 2.2, 2.1, 0, g); M(new THREE.BoxGeometry(0.1, 0.6, 1.8), MAT.glass, 3.17, 2.45, 0, g);
+      if (kind === 'ftk') { const t = M(new THREE.CylinderGeometry(1.05, 1.05, 3.9, 14), MAT.metal, -1.0, 2.25, 0, g); t.rotation.z = Math.PI / 2; } else M(new THREE.BoxGeometry(3.9, 2.2, 2.3), MAT.camo, -1.0, 2.3, 0, g); wheels(g, [2.2, -0.4, -1.9], 1.05, 0.5); };
+    // 車輛停放場（東北角）：裝甲車兩排、卡車、油罐車，旁邊有遮陽棚
+    const park = []; for (let r = 0; r < 2; r++) for (let c = 0; c < 4; c++) park.push([52 + c * 10, -68 + r * 14]);
+    park.forEach(([x, z], k) => { const st = modelStation('bbtr' + k, '停放的裝甲車', 'btr80lo.glb', x + (R() - 0.5) * 1.5, z, Math.PI / 2 + (R() - 0.5) * 0.2, 7.6, 1.5); regB('bbtr' + k, '停放的裝甲車', st.group, 4.0, 3.3, 1.5, 2); });
+    { const g = gw(67, -40, 0); for (const [a, b] of [[-17, -4], [17, -4], [-17, 4], [17, 4], [0, -4], [0, 4]]) M(new THREE.BoxGeometry(0.2, 4.2, 0.2), MAT.dark, a, 2.1, b, g); M(new THREE.BoxGeometry(35, 0.12, 9), MAT.camo, 0, 4.2, 0, g); scene.add(g); }
+    [[56, -40], [66, -40], [76, -40], [88, -22]].forEach(([x, z], k) => { const g = gw(x, z, Math.PI / 2); truck(g); bake(g); regB('btk' + k, '軍用卡車', g, 4.2, 3.6, 1.8); });
+    [[88, -50], [88, -36]].forEach(([x, z], k) => { const g = gw(x, z, 0); truck(g, 'ftk'); bake(g); regB('ftk' + k, '油罐車', g, 4.2, 3.6, 1.8); });
+    ppl(60, -52, 3); ppl(80, -30, 2); ppl(70, -76, 2);
+    // 營帳區（西北）：兩排長營帳
+    for (let r = 0; r < 2; r++) for (let c = 0; c < 3; c++) { const x = -88 + c * 15, z = -62 + r * 20, g = gw(x, z, 0); const sh = new THREE.Shape(); sh.moveTo(-3, 0); sh.lineTo(-3, 1.6); sh.lineTo(0, 3.2); sh.lineTo(3, 1.6); sh.lineTo(3, 0); sh.closePath(); const tg2 = new THREE.ExtrudeGeometry(sh, { depth: 10, bevelEnabled: false }); tg2.translate(0, 0, -5); const mm = new THREE.Mesh(tg2, MAT.camo); mm.castShadow = true; mm.receiveShadow = true; g.add(mm); M(new THREE.BoxGeometry(1.2, 2, 0.1), MAT.dark, 0, 1, 5.02, g); bake(g); regB('tnt' + (r * 3 + c), '營帳', g, 5.5, 3.4, 1.6); }
+    ppl(-74, -42, 4); ppl(-60, -70, 3); ppl(-90, -30, 2);
+    // 發電機、通訊天線
+    [[-70, -20], [42, -12]].forEach(([x, z], k) => { const g = gw(x, z, R()); M(new THREE.BoxGeometry(3.2, 1.8, 1.6), MAT.camo, 0, 0.9, 0, g); M(new THREE.CylinderGeometry(0.12, 0.12, 1.2, 8), MAT.dark, 1.2, 2.3, 0, g); for (const [a, b, w, d] of [[0, -1.6, 4.6, 0.5], [0, 1.6, 4.6, 0.5]]) M(new THREE.BoxGeometry(w, 0.9, d), MAT.bag, a, 0.45, b, g); bake(g); regB('gen' + k, '發電機', g, 3.0, 2.6, 1); });
+    [[-50, -8], [48, 4]].forEach(([x, z], k) => { const g = gw(x, z, 0); M(new THREE.CylinderGeometry(0.12, 0.22, 16, 8), MAT.metal, 0, 8, 0, g); for (let i = 0; i < 4; i++) M(new THREE.BoxGeometry(0.05, 0.05, 1.8 - i * 0.3), MAT.metal, 0, 14 - i * 1.4, 0, g); { const d = M(new THREE.CylinderGeometry(0.9, 0.2, 0.25, 12), MAT.metal, 0.5, 11, 0, g); d.rotation.z = 1.2; } M(new THREE.BoxGeometry(2.4, 2.2, 2), MAT.camo, 2.2, 1.1, 0, g); for (const a of [0, 2.1, 4.2]) { const w = M(new THREE.CylinderGeometry(0.02, 0.02, 17, 4), MAT.dark, Math.cos(a) * 4, 7.5, Math.sin(a) * 4, g); w.rotation.z = -Math.cos(a) * 0.25; w.rotation.x = Math.sin(a) * 0.25; } bake(g); regB('ant' + k, '通訊天線', g, 3.2, 16, 3); });
+    // 貨櫃區（西南）
+    { const cc = [MAT.camo, MAT.dark, MAT.sand, MAT.metal]; let k = 0; for (let r = 0; r < 2; r++) for (let c = 0; c < 4; c++) { const x = -90 + c * 8, z = 28 + r * 16, g = gw(x, z, Math.PI / 2 + (R() - 0.5) * 0.1); M(new THREE.BoxGeometry(12, 2.6, 2.45), cc[(r * 4 + c) % 4], 0, 1.3, 0, g); for (let i = -5; i <= 5; i += 1) M(new THREE.BoxGeometry(0.06, 2.4, 2.5), MAT.dark, i, 1.3, 0, g); if ((c + r) % 3 === 0) M(new THREE.BoxGeometry(12, 2.6, 2.45), cc[(c + 2) % 4], 0, 3.9, 0, g); bake(g); regB('cont' + k++, '貨櫃', g, 3.6, 3.2, 1.3); } }
+    ppl(-62, 36, 3);
+    // 油料庫（東南）：土堤圍起來的油料囊
+    { const g = gw(70, 45, 0); for (const [a, b, w, d] of [[0, -14, 36, 1.4], [0, 14, 36, 1.4], [-18, 0, 1.4, 28], [18, 0, 1.4, 28]]) M(new THREE.BoxGeometry(w, 1.3, d), MAT.sand, a, 0.65, b, g); scene.add(g); }
+    [[62, 39], [78, 39], [62, 51], [78, 51]].forEach(([x, z], k) => { const g = gw(x, z, 0); const b2 = M(new THREE.SphereGeometry(1, 16, 10), MAT.dark, 0, 0.7, 0, g); b2.scale.set(6.5, 1.1, 4); bake(g); regB('fuel' + k, '油料囊', g, 4.6, 1.8, 0.7); });
+    ppl(52, 30, 2);
+    // 彈藥掩體（南邊）：覆土的半圓拱
+    [[-38, 58], [-22, 58], [-6, 58]].forEach(([x, z], k) => { const g = gw(x, z, 0); const a = new THREE.CylinderGeometry(3.2, 3.2, 9, 14, 1, false, 0, Math.PI); const m = new THREE.Mesh(a, MAT.sand); m.rotation.z = Math.PI / 2; m.rotation.y = Math.PI / 2; m.castShadow = true; m.receiveShadow = true; g.add(m); M(new THREE.BoxGeometry(5.6, 2.6, 0.3), MAT.concrete, 0, 1.3, -4.6, g); M(new THREE.BoxGeometry(2, 2, 0.1), MAT.dark, 0, 1, -4.8, g); bake(g); regB('abk' + k, '彈藥掩體', g, 4.6, 3.4, 1.4); });
+    // 迫砲陣地（沙包圍成的圓坑）、防空砲
+    [[-80, 5], [-62, 18], [58, -2], [80, 14]].forEach(([x, z], k) => { const g = gw(x, z, R() * 6); for (let i = 0; i < 10; i++) { const a = i / 10 * 6.283; const b = M(new THREE.BoxGeometry(1.4, 0.7, 0.7), MAT.bag, Math.cos(a) * 2.4, 0.35, Math.sin(a) * 2.4, g); b.rotation.y = -a; } const t = M(new THREE.CylinderGeometry(0.09, 0.09, 1.6, 8), MAT.dark, 0, 0.8, 0, g); t.rotation.z = 0.5; M(new THREE.CylinderGeometry(0.45, 0.45, 0.06, 12), MAT.dark, 0.3, 0.05, 0, g); for (let i = 0; i < 4; i++) M(new THREE.BoxGeometry(0.7, 0.3, 0.4), MAT.camo, -1.4, 0.15 + i * 0.3, 1.2, g); bake(g); regB('bmor' + k, '迫砲陣地', g, 3.2, 1.6, 0.6); });
+    [[-88, -76], [88, 64]].forEach(([x, z], k) => { const g = gw(x, z, R() * 6); for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283; const b = M(new THREE.BoxGeometry(1.4, 1.0, 0.8), MAT.bag, Math.cos(a) * 3.2, 0.5, Math.sin(a) * 3.2, g); b.rotation.y = -a; } M(new THREE.CylinderGeometry(0.4, 0.6, 1.0, 10), MAT.dark, 0, 0.5, 0, g); M(new THREE.BoxGeometry(1.2, 0.8, 1.0), MAT.camo, 0, 1.3, 0, g); for (const z2 of [-0.25, 0.25]) { const b = M(new THREE.CylinderGeometry(0.06, 0.07, 2.8, 8), MAT.dark, 1.0, 1.9, z2, g); b.rotation.z = -0.9; } bake(g); regB('baag' + k, '防空砲', g, 3.6, 2.6, 1.2); });
+    // 營區裡走動與站崗的人
+    ppl(-10, -60, 3); ppl(30, 60, 2); ppl(-30, 40, 3); ppl(5, -40, 2);
+    // 營區裡原本長的灌木、草叢清掉（地上是碎石地，不該有樹叢）
+    { const mm = new THREE.Matrix4(), pp = new THREE.Vector3(), zero = new THREE.Matrix4().makeScale(0, 0, 0); const ims = []; scene.traverse(o => { if (o.isInstancedMesh) ims.push(o); }); for (const o of ims) { o.updateMatrixWorld(true); let ch = false; for (let i = 0; i < o.count; i++) { o.getMatrixAt(i, mm); mm.premultiply(o.matrixWorld); pp.setFromMatrixPosition(mm); if (pp.x > X0 - 6 && pp.x < X1 + 6 && pp.z > Z0 - 6 && pp.z < Z1 + 6) { o.setMatrixAt(i, zero); ch = true; } } if (ch) o.instanceMatrix.needsUpdate = true; }
+      for (let i = BUSHES.length - 1; i >= 0; i--) { const b2 = BUSHES[i]; if (b2.x > X0 - 6 && b2.x < X1 + 6 && b2.z > Z0 - 6 && b2.z < Z1 + 6) BUSHES.splice(i, 1); } }
+    // 三輛會開的裝甲車：停在營區內圈環道上，被驚動後沿著環道繞行（不再開到原野上）
+    const LOOP = [[-40, -52], [40, -52], [40, 47], [-40, 47]]; const per = 2 * (80 + 99);
+    const at = (s) => { s = ((s % per) + per) % per; for (let i = 0; i < 4; i++) { const [x0, z0] = LOOP[i], [x1, z1] = LOOP[(i + 1) % 4], L = Math.hypot(x1 - x0, z1 - z0); if (s <= L) { const t = s / L; return [x0 + (x1 - x0) * t, z0 + (z1 - z0) * t, Math.atan2(z1 - z0, x1 - x0)]; } s -= L; } return [LOOP[0][0], LOOP[0][1], 0]; };
+    BASE_LOOP.at = at; [12, 120, 250].forEach((s0, i) => { const k = 'btr' + i, m = L_MOVE[k]; Object.assign(m, { path: true, s0, s: s0, v: 6 + i * 0.6 }); const [x, z, hh] = at(s0); const st = STATIONS[k]; st.group.position.set(x, height(x, z), z); st.group.rotation.y = Math.PI - hh; st.gx = x; st.gz = z; st.gy = height(x, z); st.center.set(x, st.gy + 1.5, z); st.rot0 = st.group.rotation.clone(); m.h = m.hh = hh; });
+  }
   // 一個合併的人形（腳底在原點）：雙腿、軀幹、雙臂、頭
   const parts = []; const pb = (w, h, d, x, y, z) => { const g = new THREE.BoxGeometry(w, h, d); g.translate(x, y, z); parts.push(g); };
   pb(0.14, 0.84, 0.17, -0.1, 0.42, 0); pb(0.14, 0.84, 0.17, 0.1, 0.42, 0); pb(0.42, 0.62, 0.25, 0, 1.15, 0); pb(0.1, 0.6, 0.13, -0.27, 1.13, 0); pb(0.1, 0.6, 0.13, 0.27, 1.13, 0);
@@ -5596,7 +5665,7 @@ function lensGround() {
 function lensPlace(k, x, z, ry) { const st = STATIONS[k]; const y = height(x, z); st.group.position.set(x, y, z); if (ry !== undefined) st.group.rotation.y = ry; st.gx = x; st.gz = z; st.gy = y; st.center.set(x, y + st.home.cy, z); }
 function lensReset() {
   for (const k of ST_KEYS) { const st = STATIONS[k]; st.gone = false; st.group.visible = true; if (L_MOVE[k] || k === 'radar') { lensPlace(k, st.home.x, st.home.z, st.home.ry); st.rot0.y = st.home.ry; } else { st.group.position.y = st.home.y; st.gy = st.home.y; st.center.y = st.home.y + st.home.cy; } setStation(k, ST_INFO[k].hp); }
-  for (const k in L_MOVE) L_MOVE[k].hh = L_MOVE[k].h;
+  for (const k in L_MOVE) { L_MOVE[k].hh = L_MOVE[k].h; if (L_MOVE[k].path) L_MOVE[k].s = L_MOVE[k].s0; }
   for (const m of MIXERS) m.mx.timeScale = 1;
   sDrone.visible = false; sMsl.visible = false; sGun.visible = false; for (const t of sTrc) t.visible = false; sJet.visible = false; for (const b of sBombs) b.visible = false; resetLocalFx(); townReset(); craterReset();
 }
@@ -5639,7 +5708,7 @@ function lensFrame(dt, time) {
   // 被驚動之後：裝甲車開走、直升機發動起飛
   if (L.alarm >= 0) {
     L.alarm += dt;
-    for (const kk in L_MOVE) { const st = STATIONS[kk]; if (st.dead) continue; const m = L_MOVE[kk]; const sp = m.v * Math.min(1, L.alarm / 4); let x = st.gx + Math.cos(m.hh) * sp * dt, z = st.gz + Math.sin(m.hh) * sp * dt; const r = Math.hypot(x, z); let turn = m.turn; const tw = Math.hypot(x - TOWN.x, z - TOWN.z); if (tw < 205) { const want = Math.atan2(z - TOWN.z, x - TOWN.x); let d = want - m.hh; d = Math.atan2(Math.sin(d), Math.cos(d)); turn = Math.sign(d) * 0.7; } else if (r > 150) { const want = Math.atan2(-z, -x); let d = want - m.hh; d = Math.atan2(Math.sin(d), Math.cos(d)); turn = Math.sign(d) * 0.5; } else if (r < 44) { const want = Math.atan2(z, x); let d = want - m.hh; d = Math.atan2(Math.sin(d), Math.cos(d)); turn = Math.sign(d) * 0.6; } m.hh += turn * dt; lensPlace(kk, x, z, Math.PI - m.hh); st.rot0.y = Math.PI - m.hh; }
+    for (const kk in L_MOVE) { const st = STATIONS[kk]; if (st.dead) continue; const m = L_MOVE[kk]; if (m.path) { m.s += m.v * Math.min(1, L.alarm / 4) * dt; const [x, z, hh] = BASE_LOOP.at(m.s); lensPlace(kk, x, z, Math.PI - hh); st.rot0.y = Math.PI - hh; continue; } const sp = m.v * Math.min(1, L.alarm / 4); let x = st.gx + Math.cos(m.hh) * sp * dt, z = st.gz + Math.sin(m.hh) * sp * dt; const r = Math.hypot(x, z); let turn = m.turn; const tw = Math.hypot(x - TOWN.x, z - TOWN.z); if (tw < 205) { const want = Math.atan2(z - TOWN.z, x - TOWN.x); let d = want - m.hh; d = Math.atan2(Math.sin(d), Math.cos(d)); turn = Math.sign(d) * 0.7; } else if (r > 150) { const want = Math.atan2(-z, -x); let d = want - m.hh; d = Math.atan2(Math.sin(d), Math.cos(d)); turn = Math.sign(d) * 0.5; } else if (r < 44) { const want = Math.atan2(z, x); let d = want - m.hh; d = Math.atan2(Math.sin(d), Math.cos(d)); turn = Math.sign(d) * 0.6; } m.hh += turn * dt; lensPlace(kk, x, z, Math.PI - m.hh); st.rot0.y = Math.PI - m.hh; }
     const hs = STATIONS.radar;
     if (!hs.dead && !hs.gone) {
       if (L.heli === 0 && L.alarm > 30) { L.heli = 1; lensMsg('攻擊直升機正在發動，快要起飛了！', 4); }
@@ -5785,7 +5854,7 @@ function pplTick(dt) {
   const T = TOWN, PP = T.ppl; if (!PP) return; const run = LENS.alarm >= 0, UL = T.hu + 4, VL = T.hv + 4, PS = PP.pose || null, _ct = Math.cos(T.th), _st = Math.sin(T.th); if (PS) for (const pm of PS) pm.count = 0;
   for (const g of PP.groups) {
     if (!g.dead) {
-      if (run && !g.walk && !g.flee) { g.flee = true; if (((g.mem[0].i * 7) % 10) < 6) { // 被驚動：六成的人往最近的街上走開
+      if (run && !g.walk && !g.flee && !g.fixed) { g.flee = true; if (((g.mem[0].i * 7) % 10) < 6) { // 被驚動：六成的人往最近的街上走開
         const nv = PP.STV.reduce((p, c) => Math.abs(c - g.v) < Math.abs(p - g.v) ? c : p), nu = PP.STU.reduce((p, c) => Math.abs(c - g.u) < Math.abs(p - g.u) ? c : p);
         if (Math.abs(nv - g.v) < Math.abs(nu - g.u)) { g.ax = 'u'; g.snap = nv + (g.mem[0].i % 2 ? 1.2 : -1.2); } else { g.ax = 'v'; g.snap = nu + (g.mem[0].i % 2 ? 1.2 : -1.2); }
         g.walk = true; g.dir = g.mem[0].i % 3 ? 1 : -1; g.sp = 1.2 + (g.mem[0].i % 5) * 0.15; } }
@@ -5810,7 +5879,7 @@ function pplReset() { const PP = TOWN.ppl; if (!PP) return; for (const g of PP.g
 /* ---------- 熱影像：光學 → 白熱（熱的東西是白的）→ 黑熱（熱的東西是黑的）。人、車輛引擎、飛機、火與燒毀的殘骸會發熱 ---------- */
 const THERM = { mode: 0 }; const hotMat = new THREE.MeshStandardMaterial({ color: '#606060', roughness: 1, emissive: new THREE.Color(0.62, 0.62, 0.62) });
 const THERM_NAME = ['光學', '白熱', '黑熱'], THERM_F = ['grayscale(1) sepia(0.42) contrast(1.24) brightness(0.98)', 'grayscale(1) contrast(1.45) brightness(0.95)', 'grayscale(1) invert(1) contrast(1.45) brightness(1.02)'];
-const T0L = {}; const HOT_RE = /^(btr|tbt|trk|tcp|radar|cmd)/;
+const T0L = {}; const HOT_RE = /^(btr|tbt|trk|tcp|radar|cmd|bbtr|btk|ftk|gen)/;
 function lensFilter() { if (LENS.on) view.querySelector('canvas').style.filter = THERM_F[THERM.mode]; }
 function thermApply() {
   const on = THERM.mode > 0; if (T0L.hemi === undefined) { T0L.hemi = hemi.intensity; T0L.sun = sun.intensity; T0L.env = scene.environmentIntensity; T0L.fog = scene.fog.color.clone(); }
