@@ -2679,7 +2679,7 @@ const FIREBASE_CONFIG = {
   messagingSenderId: '528664638395',
   appId: '1:528664638395:web:e478a9b393bbfe4b85ca9e',
 };
-const VERSION = '1.6（取消商店，三項裝備一開始就給）';
+const VERSION = '1.6.1（手機直拿版面、結算畫面與課後投影片文字）';
 // 直接在電腦上打開下載的檔案時（網址是 file://），旁邊沒有圖檔和音效資料夾，改從 GitHub 網站載入
 const ASSET = location.protocol === 'file:' ? 'https://op06dhans-eng.github.io/radar-defense/' : '';
 // 新版自動重新載入：Safari 會暫存舊網頁，拿 version.txt 比對，不同就換網址重新載入（每個分頁只試一次）
@@ -4468,12 +4468,12 @@ function renderTyOld() {
   const p = $('sPts'); if (p) p.textContent = `積分 ${WAL.pts}`;
 }
 function walletHtml() {
-  return `<div class="wal"><div><b>${WAL.pts}</b><span>目前積分</span></div><div><b>${WAL.earned}</b><span>累計賺到</span></div><div><b>${WAL.spent}</b><span>花在裝備</span></div></div>
+  return `<div class="wal"><div><b>${WAL.pts}</b><span>目前積分</span></div><div><b>${Object.values(WAL.hits).reduce((a, b) => a + b, 0)}</b><span>命中次數</span></div><div><b>${Object.values(WAL.kills).reduce((a, b) => a + b, 0)}</b><span>摧毀目標</span></div></div>
   <table class="ptT"><tr><th>目標</th><th>命中</th><th>摧毀加發</th><th>你的戰果</th></tr>${Object.keys(PT).map(k => `<tr><td>${PT_NAME[k]}</td><td>${PT[k][0]}</td><td>＋${PT[k][1]}</td><td>${WAL.hits[k] ? `命中 ${WAL.hits[k]}${WAL.kills[k] ? `　摧毀 ${WAL.kills[k]}` : ''}` : '—'}</td></tr>`).join('')}</table>`;
 }
 const REVEAL = [
-  `<h1>你剛才做了三件事</h1><p>1. 打中目標，拿到分數。</p><p>2. 發現有些目標分數比較高，開始挑目標。</p><p>3. 用分數換更好的裝備，再去拿更多分數。</p><p class="muted">這是手機遊戲最常見的升級循環。但這套設計不是從遊戲來的。</p>`,
-  `<h1>這套制度是真的</h1><p>烏克蘭軍方有一套「無人機大軍獎勵」（Army of Drones Bonus）計畫：部隊上傳無人機命中目標的影片，查證後換成積分。</p><p>積分可以在政府的線上平台「勇敢一號市集」（Brave1 Market）換無人機、電子干擾設備等裝備。官員形容它像「軍用版的亞馬遜」。</p><p>每個月公布部隊排行榜。不同目標分數不同，而且會調整：2026 年把打擊對方無人機操作員的積分加倍。</p><p>烏克蘭國防部說，2026 年以來各部隊已經用積分訂購超過 18.1 萬件裝備。</p><p class="muted">出處：Politico（2025-04-29）、DroneXL（2025-08-25）、Euromaidan Press（2026-01-27、2026-04-24）、烏克蘭國防部網站（2026-04）。本遊戲的陣營、場景與分數皆為虛構。</p>`,
+  `<h1>你剛才做了三件事</h1><p>1. 打中目標，拿到分數。</p><p>2. 發現有些目標分數比較高，開始挑目標。</p><p>3. 看著排行榜，想追過別人、拿更多分數。</p><p class="muted">這是手機遊戲最常見的計分與排名設計。但這套設計不是從遊戲來的。</p>`,
+  `<h1>這套制度是真的</h1><p>烏克蘭軍方有一套「無人機大軍獎勵」（Army of Drones Bonus）計畫：部隊上傳無人機命中目標的影片，查證後換成積分。</p><p>積分可以在政府的線上平台「勇敢一號市集」（Brave1 Market）換無人機、電子干擾設備等裝備。官員形容它像「軍用版的亞馬遜」。剛才的遊戲省略了這一步：現實中，分數會直接變成下一批武器。</p><p>每個月公布部隊排行榜。不同目標分數不同，而且會調整：2026 年把打擊對方無人機操作員的積分加倍。</p><p>烏克蘭國防部說，2026 年以來各部隊已經用積分訂購超過 18.1 萬件裝備。</p><p class="muted">出處：Politico（2025-04-29）、DroneXL（2025-08-25）、Euromaidan Press（2026-01-27、2026-04-24）、烏克蘭國防部網站（2026-04）。本遊戲的陣營、場景與分數皆為虛構。</p>`,
   `<h1>真的發生過</h1><p>2021 年 8 月 29 日，美軍在阿富汗首都喀布爾用無人機攻擊一輛白色轎車。操作人員透過螢幕追蹤這輛車八個小時，判定它是即將發動攻擊的威脅。</p><p>軍方起初說這是一次「正當的攻擊」。三個星期後，美國國防部承認是「悲劇性的錯誤」：死的是 10 名平民，其中 7 名是兒童，沒有任何武裝分子。</p><p>國際人道法有兩個基本原則。區分原則：只能攻擊軍事目標。比例原則：預期的平民傷亡，不能超過這次攻擊帶來的軍事利益。</p><p class="muted">出處：美國中央司令部調查結果與國防部 2021-09-17 的說明（美聯社、哥倫比亞廣播公司、今日美國報導）。</p>`,
   `<h1>想一想</h1><p>1. 你剛才有沒有為了分數，專挑高分的目標？分數表改變了你的打法嗎？</p><p>2. 把戰果變成分數和排行榜，會不會改變操作員看待「目標」的方式？</p><p>3. 你玩過的軍事遊戲裡，城鎮有居民嗎？遊戲把戰爭畫得很乾淨，這會怎麼影響我們想像真實的戰爭？</p><p>4. 電玩向戰爭借題材，戰爭又向電玩借制度。這種雙向流動，就是軍事娛樂複合體。誰設計了分數表，誰就決定了什麼值得打。</p>`,
 ];
@@ -5645,7 +5645,9 @@ document.body.appendChild(hudL);
 .lBar { position: absolute; left: 50%; top: calc(50% + 17vh); transform: translateX(-50%); width: min(50vw, 360px); height: 1.5em; border: 1px solid #e9efe9; background: rgba(0,0,0,.55); border-radius: 4px; overflow: hidden; pointer-events: none; } .lBar i { position: absolute; left: 0; top: 0; bottom: 0; background: #ffd27a; opacity: .75; } .lBar span { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; text-shadow: 0 0 3px #000; font-size: .85em; white-space: nowrap; }
 .lWp { position: absolute; left: 50%; bottom: max(8px, env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; gap: 6px; } .lWp b, .lWp small { white-space: nowrap; } @media (max-width: 900px) { .lWp button { min-width: 0; padding: 4px 9px 8px; font-size: .88em; } #lZoom, #lShopB, #lTh { bottom: 92px !important; } } .lWp button { position: relative; min-width: 5.6em; padding: 5px 10px 9px; border-radius: 6px; border: 2px solid rgba(255,255,255,.75); background: rgba(20,22,22,.72); color: #fff; font: inherit; text-align: center; touch-action: none; overflow: hidden; } .lWp b { display: block; font-weight: 900; } .lWp small { display: block; font-size: .72em; opacity: .9; } .lWp i { position: absolute; left: 0; bottom: 0; height: 5px; width: 100%; background: #fff; } .lWp button.off { opacity: .45; } .lWp button.on { border-color: #ff5a4e; }
 .lBtn { position: absolute; border-radius: 50%; border: 3px solid #e9efe9; background: rgba(0,0,0,.5); color: #e9efe9; font: inherit; font-weight: 900; touch-action: none; } .lBtn.on { background: rgba(255,210,122,.35); }
-#lShopP { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,.55); }`; document.head.appendChild(st); }
+#lShopP { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,.55); }
+/* 手機直拿：攻擊按鈕排成兩排三個，數據列移到積分下面，避免重疊或被切掉 */
+@media (orientation: portrait) { .lWp { display: grid !important; grid-template-columns: repeat(3, 1fr); width: calc(100vw - 16px); gap: 5px !important; } .lWp button { min-width: 0 !important; padding: 4px 4px 8px !important; } .lTop { top: 100px !important; gap: 1.8em !important; } .lTop small { white-space: nowrap; } .lTop small { font-size: .62em !important; } .lData { font-size: .9em; } #lZoom, #lTh { bottom: 150px !important; } #lLase { bottom: 140px !important; } .lHint { display: none; } }`; document.head.appendChild(st); }
 function lensMsg(t, sec = 3) { LENS.msg = t; LENS.msgT = sec; }
 function lensFov() { return L_ZOOM[Math.min(LENS.zi, WAL.own.zoom ? 4 : 3)]; }
 function lensZoom(d) { const n = WAL.own.zoom ? 5 : 4; LENS.zi = d === 0 ? (LENS.zi + 1) % n : THREE.MathUtils.clamp(LENS.zi + d, 0, n - 1); }
