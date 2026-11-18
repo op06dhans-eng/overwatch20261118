@@ -5918,7 +5918,7 @@ function stuStart() {
   if (LENS.on) stopLens(true); CL.round = m.round; CL.prac = false; CL.showRes = false; CL.earned0 = WAL.earned; CL.sendT = 0; ptUI.hidden = true; PTIME = left; startLens(); stuSend();
 }
 function stuStat(done) { const T = TOWN; return { r: CL.round, t: CL.team, no: CL.no, s: WAL.earned - CL.earned0, sa: T.salvo, ai: T.air, tp: T.pts, hh: T.hh, pp: T.dead, sc: T.sch, mk: T.mkt, mil: T.mil.filter((k) => STATIONS[k].dead).length, d: done ? 1 : 0, at: NET.now() }; }
-function stuSend(done) { if (CL.prac || CL.team < 0 || !CL.round) return; NET.set(P('stat/' + CL.pid), stuStat(done)); }
+function stuSend(done) { if (CL.prac || CL.team < 0 || !CL.round) return; NET.set(P('stat/' + CL.pid), clean(stuStat(done))); }
 function ptTick(dt) {
   if (ROLE === 'student' && LENS.on && !CL.prac && CL.round) { CL.sendT -= dt; if (CL.sendT <= 0) { CL.sendT = 1.5; stuSend(); } }
   if (ROLE === 'teacher' && !SAMPLE) teaTick(dt);
@@ -5927,10 +5927,12 @@ function ptTick(dt) {
 function ptAfterRound(silent) {
   if (SAMPLE || ROLE !== 'student') return false;
   if (CL.prac) { CL.prac = false; if (silent) return true; return false; }
-  if (CL.round) { const s = stuStat(true); s.pp = G.town.dead; s.hh = G.town.hh; s.sc = G.town.sch; s.mk = G.town.mkt; s.sa = G.town.salvo; s.ai = G.town.air; s.tp = G.town.pts; s.mil = G.town.milK; NET.set(P('stat/' + CL.pid), s); }
+  if (CL.round) { const s = stuStat(true); s.pp = G.town.dead; s.hh = G.town.hh; s.sc = G.town.sch; s.mk = G.town.mkt; s.sa = G.town.salvo; s.ai = G.town.air; s.tp = G.town.pts; s.mil = G.town.milK; NET.set(P('stat/' + CL.pid), clean(s)); }
   CL.showRes = true; return !!silent;
 }
 /* ---------------- 老師 ---------------- */
+// 雲端資料庫不接受 undefined 的欄位（同機練習連線不會擋，所以之前沒測出來）：送出前一律清掉，數字缺漏補 0
+function clean(o) { const r = {}; for (const k in o) { const v = o[k]; if (v === undefined || (typeof v === 'number' && !isFinite(v))) continue; r[k] = v; } return r; }
 const TT = { len: 180, logT: 0, boardT: 0 };
 function ptTeacher() {
   ROLE = 'teacher'; for (const s of ['scrRole', 'scrJoin', 'scrWait', 'scrCount', 'scrNext', 'scrRes', 'scrPhone']) { const e = $(s); if (e) e.hidden = true; }
@@ -5992,7 +5994,7 @@ function teaSlides() {
   ];
 }
 function teaSlide(i) {
-  const S = $('ptS'), sl = teaSlides().slice(0, 1); // 只留排名，其他由老師口頭講 if (i < 0 || i >= sl.length) { S.hidden = true; CL.slide = -1; if (i >= 0) NET.update(P('meta'), { phase: 'end' }); return; }
+  const S = $('ptS'), sl = teaSlides().slice(0, 1); /* 只留排名，其他由老師口頭講 */ if (i < 0 || i >= sl.length) { S.hidden = true; CL.slide = -1; if (i >= 0) NET.update(P('meta'), { phase: 'end' }); return; }
   CL.slide = i; S.hidden = false; S.innerHTML = `<div class="sl">${sl[i]}</div><div class="pg">左右鍵換頁</div><div class="nav"><button id="ptPv">← 上一頁</button><button id="ptNx">${i < sl.length - 1 ? '下一頁 →' : '結束'}</button></div>`;
   $('ptPv').onclick = () => teaSlide(Math.max(0, i - 1)); $('ptNx').onclick = () => teaSlide(i + 1);
 }
@@ -6006,7 +6008,7 @@ function fakeTick(dt) {
   for (const f of CL.fake) { if (!f.s) f.s = { r: m.round, t: f.t, no: f.no, s: 0, sa: 0, ai: 0, tp: 0, hh: 0, pp: 0, sc: 0, mk: 0, mil: 0, d: 0, T: 0 };
     const s = f.s; if (R() < dt * 0.4) { s.s += [8, 10, 12, 15, 25][Math.floor(R() * 5)]; s.mil += R() < 0.5 ? 1 : 0; }
     if (f.bomber && R() < dt * 0.05) { const air = R() < 0.3 && s.ai < 2; if (air) { s.ai++; s.tp += 80; s.s += 80; s.hh += 10 + Math.floor(R() * 8); } else { s.sa++; s.tp += 40; s.s += 40; s.hh += 3 + Math.floor(R() * 5); } s.pp = s.hh * HH_SIZE * 2; if (R() < 0.15) s.sc++; if (R() < 0.08) s.mk++; }
-    s.T -= dt; if (s.T <= 0) { s.T = 1.5; s.at = NET.now(); NET.set(P('stat/' + f.pid), { ...s, T: undefined }); } }
+    s.T -= dt; if (s.T <= 0) { s.T = 1.5; s.at = NET.now(); { const { T, ...o } = s; NET.set(P('stat/' + f.pid), clean(o)); } } }
 }
 
 // ---------- 介面風格：作戰地圖平板（0.7） ----------
